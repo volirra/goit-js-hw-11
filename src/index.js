@@ -1,89 +1,84 @@
-import Notiflix from 'notiflix';
-import SimpleLightbox from 'simplelightbox';
-import 'simplelightbox/dist/simple-lightbox.min.css';
+import axios from 'axios';
+import { Buffer } from 'buffer';
+import Notiflix from 'notiflix'; 
 
-const input = document.querySelector('.search-form-input');
-const btnSearch = document.querySelector('.search-form-button');
+const loadMoreButton = document.querySelector('.load-more');
+loadMoreButton.style.display = 'none';
+
+const form = document.getElementById('search-form');
 const gallery = document.querySelector('.gallery');
-const btnLoadMore = document.querySelector('.load-more');
-let gallerySimpleLightbox = new SimpleLightbox('.gallery a');
+const notification = document.querySelector('.notification');
+let page = 1;
+let searchQuery = '';
+let totalHits = 0;
+let totalPages = 0;
 
-btnLoadMore.style.display = 'none';
-
-let pageNumber = 1;
-
-btnSearch.addEventListener('click', e => {
+form.addEventListener('submit', async e => {
   e.preventDefault();
-  cleanGallery();
-  const trimmedValue = input.value.trim();
-  if (trimmedValue !== '') {
-    fetchImages(trimmedValue, pageNumber).then(foundData => {
-      if (foundData.hits.length === 0) {
-        Notiflix.Notify.failure(
-          'Sorry, there are no images matching your search query. Please try again.'
-        );
-      } else {
-        renderImageList(foundData.hits);
-        Notiflix.Notify.success(
-          `Hooray! We found ${foundData.totalHits} images.`
-        );
-        btnLoadMore.style.display = 'block';
-        gallerySimpleLightbox.refresh();
-      }
-    });
+  gallery.innerHTML = '';
+  page = 1;
+  searchQuery = e.target.searchQuery.value.trim();
+  if (isValidSearchQuery(searchQuery)) {
+    await fetchImages();
+  } else {
+   
+    Notiflix.Notify.failure(
+      'Будь ласка, введіть коректний запит для пошуку зображень.'
+    );
+    loadMoreButton.style.display = 'none';
   }
 });
 
-btnLoadMore.addEventListener('click', () => {
-  pageNumber++;
-  const trimmedValue = input.value.trim();
-  btnLoadMore.style.display = 'none';
-  fetchImages(trimmedValue, pageNumber).then(foundData => {
-    if (foundData.hits.length === 0) {
-      Notiflix.Notify.failure(
-        'Sorry, there are no images matching your search query. Please try again.'
-      );
-    } else {
-      renderImageList(foundData.hits);
-      Notiflix.Notify.success(
-        `Hooray! We found ${foundData.totalHits} images.`
-      );
-      btnLoadMore.style.display = 'block';
-    }
-  });
+loadMoreButton.addEventListener('click', async () => {
+  page++;
+  await fetchImages();
 });
 
-function renderImageList(images) {
-  console.log(images, 'images');
-  const markup = images
-    .map(image => {
-      console.log('img', image);
-      return `<div class="photo-card">
+async function fetchImages() {
+  const apiKey = '39759324-a98081d45e1653f503d47aa2f';
+  const perPage = 40;
+  const apiUrl = `https://pixabay.com/api/?key=${apiKey}&q=${searchQuery}&image_type=photo&orientation=horizontal&safesearch=true&page=${page}&per_page=${perPage}`;
 
-       <a href="${image.largeImageURL}"><img class="photo" src="${image.webformatURL}" alt="${image.tags}" title="${image.tags}" loading="lazy"/></a>
+  try {
+    const response = await axios.get(apiUrl);
+    const data = response.data;
 
-        <div class="info">
-           <p class="info-item">
-    <b>Likes</b> <span class="info-item-api"> ${image.likes} </span>
-</p>
-            <p class="info-item">
-                <b>Views</b> <span class="info-item-api">${image.views}</span>  
-            </p>
-            <p class="info-item">
-                <b>Comments</b> <span class="info-item-api">${image.comments}</span>  
-            </p>
-            <p class="info-item">
-                <b>Downloads</b> <span class="info-item-api">${image.downloads}</span> 
-            </p>
-        </div>
-    </div>`;
-    })
-    .join('');
-  gallery.innerHTML += markup;
+    if (data.totalHits === 0) {
+    
+      Notiflix.Notify.failure(
+        'На жаль, за вашим запитом не знайдено зображень. Будь ласка, спробуйте ще раз.'
+      );
+      loadMoreButton.style.display = 'none';
+    } else {
+      totalHits = data.totalHits;
+      totalPages = Math.ceil(totalHits / perPage);
+
+      data.hits.forEach(image => {
+        const card = document.createElement('div');
+        card.classList.add('photo-card');
+        card.innerHTML = `
+                    <img src="${image.webformatURL}" alt="${image.tags}" loading="lazy" />
+                    <div class="info">
+                        <p class="info-item"><b>likes</b> ${image.likes}</p>
+                        <p class="info-item"><b>likes</b> ${image.likes}</p>
+                        <p class="info-item"><b>comments</b> ${image.comments}</p>
+                        <p class="info-item"><b>downloads</b> ${image.downloads}</p>
+                    </div>
+                `;
+        gallery.appendChild(card);
+      });
+
+      if (page < totalPages) {
+        loadMoreButton.style.display = 'block';
+      } else {
+        loadMoreButton.style.display = 'none';
+      }
+    }
+  } catch (error) {
+    console.error('Помилка при отриманні зображень:', error);
+  }
 }
 
-function cleanGallery() {
-  gallery.innerHTML = '';
-  pageNumber = 1;
-  btnLoadMore.style.display = 'none';
+function isValidSearchQuery(query) {
+  return query.length > 0;
 }
