@@ -129,7 +129,6 @@ function showLoadMorePage() {
 
 window.addEventListener('scroll', showLoadMorePage);
 
-let arrowTop;
 arrowTop.onclick = function () {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
