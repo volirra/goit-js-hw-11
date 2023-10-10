@@ -82,7 +82,7 @@ async function onSearchForm(e) {
       simpleLightBox.refresh();
       Notiflix.Notify.success(`Hooray! We found ${data.totalHits} images.`);
     }
-  }.catch (error) {
+  }catch (error) {
     console.log(error);
   } finally {
     searchForm.reset();
