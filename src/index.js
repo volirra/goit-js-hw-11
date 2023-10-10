@@ -1,11 +1,11 @@
-import axios from 'axios';
 import Notiflix from 'notiflix';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
+import { fetchImages } from './js/fetchImages';
 
 const searchForm = document.getElementById('search-form');
 const gallery = document.querySelector('.gallery');
-const KEY = '39759324-a98081d45e1653f503d47aa2f';
+
 
 let query = '';
 let page = 1;
@@ -51,7 +51,7 @@ function renderGallery(images) {
   gallery.insertAdjacentHTML('beforeend', markup);
 }
 
-function onSearchForm(e) {
+async function onSearchForm(e) {
   e.preventDefault();
   page = 1;
   query = e.currentTarget.elements.searchQuery.value.trim();
@@ -64,16 +64,55 @@ function onSearchForm(e) {
     );
     return;
   }
+
+  try {
+    const data = await fetchImages(query, page, perPage)
+   
+    if (data.totalHits === 0) {
+      Notiflix.Notify.failure(
+        'Sorry, there are no images matching your search query. Please try again.'
+      );
+    } else {
+      renderGallery(data.hits);
+      const totalPages = Math.ceil(data.totalHits / perPage);
+
+      if (page >= totalPages) {
+        allPagesLoaded = true;
+      }
+      simpleLightBox.refresh();
+      Notiflix.Notify.success(`Hooray! We found ${data.totalHits} images.`);
+    }
+  }.catch (error) {
+    console.log(error);
+  } finally {
+    searchForm.reset();
+  }
 }
- //SmoothScroll({
-  //animationTime: 800,
-  //stepSize: 75,
-  //accelerationDelta: 30,
-  //accelerationMax: 2,
-  //keyboardSupport: true,
-  //arrowScroll: 50,
-  //pulseAlgorithm: true,
-  //pulseScale: 4,
-  //pulseNormalize: 1,
-  //touchpadSupport: true,
-//});
+ 
+function onloadMore() {
+  if (allPagesLoaded) {
+    return;
+  }
+  page += 1;
+}
+function checkIfEndOfPage() {
+  return (
+    window.innerHeight + window.scrollY >= document.documentElement.scrollHeight
+  );
+}
+
+function showLoadMorePage() {
+  if (checkIfEndOfPage()) {
+    onloadMore();
+  }
+}
+
+window.addEventListener('scroll', showLoadMorePage);
+
+arrowTop.onclick = function () {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.addEventListener('scroll', function () {
+  arrowTop.hidden = scrollY < document.documentElement.clientHeight;
+});
